@@ -1,0 +1,122 @@
+<html>
+<head>
+<script>
+document.onpaste = function(event){
+		var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+		// console.log(JSON.stringify(items)); // will give you the mime types
+		for (index in items) {
+				var item = items[index];
+				if (item.kind === 'file') {
+						var blob = item.getAsFile();
+						var reader = new FileReader();
+						// console.dir(blob);
+						if (!blob.type.startsWith("image")) {
+							return;
+						}
+						reader.onload = function(event) {
+								var container = document.body;
+								// data url!
+								var data_url = event.target.result;
+								// console.log("data", data_url);
+								var img = document.createElement("img");
+								var el_crop = document.createElement("div");
+								var el = document.createElement("div");
+
+								el_crop.append(img);
+								el.append(el_crop);
+
+								img.setAttribute("src", data_url);
+								img.draggable = false;
+
+								el_crop.style.overflow = "hidden";
+								el_crop.style.transform = "translate(-50%, -50%)";
+								el_crop.style.position = "fixed";
+								el_crop.style.border = "1px solid black";
+								img.onload = () => {
+										el_crop.style.width = img.width;
+										el_crop.style.height = img.height;
+									}
+
+								el.style.position = "fixed";
+								el.style.width = 0;
+								el.style.height = 0;
+
+								var x, y, scale, crop;
+								x = window.innerWidth / 2;
+								y = window.innerHeight / 2;
+								scale = 1;
+								crop = {x1: 0, y1: 0, x2: 0, y2: 0};
+								function snap() {
+									el.style.left = x;
+									el.style.top = y;
+									el.style.scale = scale;
+
+									// adjust since scaling is from the center
+									el_crop.style.marginLeft = crop.x1 - crop.x2 / 2;
+									el_crop.style.marginTop = crop.y1 - crop.y2 / 2;
+									el_crop.style.width = img.width - crop.x2;
+									el_crop.style.height = img.height - crop.y2;
+
+									img.style.marginLeft = -crop.x1;
+									img.style.marginTop = -crop.y1;
+								}
+								snap();
+								var dragx, dragy;
+								el.onmousedown = function(e) {
+										dragx = e.clientX;
+										dragy = e.clientY;
+										function onstop() {
+												container.removeEventListener("mousemove", ondrag);
+												document.removeEventListener("mouseup", onstop);
+											}
+										container.addEventListener("mousemove", ondrag);
+										document.addEventListener("mouseup", onstop);
+										container.removeChild(el);
+										container.append(el);
+								}
+								function ondrag(e) {
+										console.dir(e);
+										if (e.clientX == 0) return;
+										var deltaX = e.clientX - dragx;
+										var deltaY = e.clientY - dragy;
+										if (e.shiftKey) {
+												deltaX /= scale;
+												deltaY /= scale;
+												if (e.clientX <= x) {
+														crop.x1 += deltaX;
+														if (crop.x1 > 0) crop.x2 += deltaX;
+													}
+												else crop.x2 -= deltaX;
+												if (e.clientY <= y) {
+														crop.y1 += deltaY;
+														if (crop.y1 > 0) crop.y2 += deltaY;
+													}
+												else crop.y2 -= deltaY;
+												if (crop.x1 < 0) crop.x1 = 0;
+												if (crop.y1 < 0) crop.y1 = 0;
+												if (crop.y2 < crop.y1) crop.y2 = crop.y1;
+												if (crop.x2 < crop.x1) crop.x2 = crop.x1;
+												// console.log(crop);
+										} else {
+											x += deltaX;
+											y += deltaY;
+										}
+										snap();
+										dragx = e.clientX;
+										dragy = e.clientY;
+								}
+								el.onwheel = function(e) {
+										scale /= 2**(e.deltaY / 1000);
+										snap();
+									}
+								container.append(el);
+						};
+						reader.readAsDataURL(blob);
+					}
+			}
+	}
+</script>
+</head>
+<body>
+</body>
+</html>
